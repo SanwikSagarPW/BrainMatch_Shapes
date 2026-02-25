@@ -10,11 +10,20 @@ class AnalyticsManager {
     this._isInitialized = false;
     this._gameId = '';
     this._sessionName = '';
+    this._sessionId = '';
     
     this._reportData = {
       gameId: '',
+      sessionId: '',
+      timestamp: '',
       name: '',
       xpEarnedTotal: 0,
+      xpEarned: 0,
+      xpTotal: 0,
+      bestXp: 0,
+      lastPlayedLevel: '',
+      highestLevelPlayed: '',
+      perLevelAnalytics: {},
       rawData: [],
       diagnostics: {
         levels: []
@@ -39,12 +48,21 @@ class AnalyticsManager {
   initialize(gameId, sessionName) {
     this._gameId = gameId;
     this._sessionName = sessionName;
+    this._sessionId = sessionName; // Use sessionName as sessionId
     
     this._reportData.gameId = gameId;
+    this._reportData.sessionId = sessionName;
+    this._reportData.timestamp = '';
     this._reportData.name = sessionName;
+    this._reportData.xpEarnedTotal = 0;
+    this._reportData.xpEarned = 0;
+    this._reportData.xpTotal = 0;
+    this._reportData.bestXp = 0;
+    this._reportData.lastPlayedLevel = '';
+    this._reportData.highestLevelPlayed = '';
+    this._reportData.perLevelAnalytics = {};
     this._reportData.diagnostics.levels = [];
     this._reportData.rawData = [];
-    this._reportData.xpEarnedTotal = 0;
     
     this._isInitialized = true;
     console.log(`[Analytics] Initialized for: ${gameId}`);
@@ -84,6 +102,12 @@ class AnalyticsManager {
     };
     
     this._reportData.diagnostics.levels.push(levelEntry);
+    
+    // Update lastPlayedLevel
+    this._reportData.lastPlayedLevel = levelId;
+    
+    // Update highestLevelPlayed (compare level numbers for campaign levels)
+    this._updateHighestLevel(levelId);
   }
   
   /**
@@ -103,6 +127,9 @@ class AnalyticsManager {
       
       // Update global session totals
       this._reportData.xpEarnedTotal += xp;
+      
+      // Update per-level analytics
+      this._updatePerLevelAnalytics(levelId, successful, timeTakenMs, xp);
     } else {
       console.warn(`[Analytics] End Level called for unknown level: ${levelId}`);
     }
@@ -148,15 +175,17 @@ class AnalyticsManager {
       console.error('[Analytics] Attempted to submit without initialization.');
       return;
     }
+    
+    // Update timestamp before submitting
+    this._reportData.timestamp = new Date().toISOString();
+    
+    // Ensure all XP fields are synchronized
+    this._reportData.xpEarned = this._reportData.xpEarnedTotal;
+    this._reportData.xpTotal = this._reportData.xpEarnedTotal;
+    this._reportData.bestXp = this._reportData.xpEarnedTotal;
+    
     // Build canonical payload
     const payload = JSON.parse(JSON.stringify(this._reportData));
-    // ensure canonical fields expected by hosts
-    if (!payload.sessionId) payload.sessionId = (Date.now() + '-' + Math.random().toString(36));
-    if (!payload.timestamp) payload.timestamp = new Date().toISOString();
-    // map existing fields to common names
-    payload.xpEarned = payload.xpEarned || payload.xpEarnedTotal || 0;
-    payload.xpTotal = payload.xpTotal || payload.xpEarnedTotal || 0;
-    payload.bestXp = payload.bestXp || payload.xpEarnedTotal || 0;
 
     // Try delivery via several bridges, best-effort. If window is not present (test/node), just return payload
     if (typeof window === 'undefined') {
@@ -252,6 +281,12 @@ class AnalyticsManager {
    */
   reset() {
     this._reportData.xpEarnedTotal = 0;
+    this._reportData.xpEarned = 0;
+    this._reportData.xpTotal = 0;
+    this._reportData.bestXp = 0;
+    this._reportData.lastPlayedLevel = '';
+    this._reportData.highestLevelPlayed = '';
+    this._reportData.perLevelAnalytics = {};
     this._reportData.rawData = [];
     this._reportData.diagnostics.levels = [];
     console.log('[Analytics] Data reset');
@@ -273,6 +308,82 @@ class AnalyticsManager {
       }
     }
     return null;
+  }
+  
+  /**
+   * Update highest level played based on level numbering
+   * @private
+   * @param {string} levelId
+   */
+  _updateHighestLevel(levelId) {
+    const current = this._reportData.highestLevelPlayed;
+    
+    // Extract level number from campaign levels (e.g., "campaign_level_3" -> 3)
+    const currentMatch = current.match(/campaign_level_(\d+)/);
+    const newMatch = levelId.match(/campaign_level_(\d+)/);
+    
+    if (newMatch) {
+      const newLevel = parseInt(newMatch[1], 10);
+      
+      if (currentMatch) {
+        const currentLevel = parseInt(currentMatch[1], 10);
+        if (newLevel > currentLevel) {
+          this._reportData.highestLevelPlayed = levelId;
+        }
+      } else {
+        // No current highest level, set it
+        this._reportData.highestLevelPlayed = levelId;
+      }
+    } else if (!current) {
+      // For non-campaign levels (like reflex mode), just set if empty
+      this._reportData.highestLevelPlayed = levelId;
+    }
+  }
+  
+  /**
+   * Update per-level analytics aggregation
+   * @private
+   * @param {string} levelId
+   * @param {boolean} successful
+   * @param {number} timeTakenMs
+   * @param {number} xp
+   */
+  _updatePerLevelAnalytics(levelId, successful, timeTakenMs, xp) {
+    if (!this._reportData.perLevelAnalytics[levelId]) {
+      this._reportData.perLevelAnalytics[levelId] = {
+        attempts: 0,
+        wins: 0,
+        losses: 0,
+        totalTimeMs: 0,
+        bestTimeMs: Infinity,
+        totalXp: 0,
+        averageTimeMs: 0
+      };
+    }
+    
+    const stats = this._reportData.perLevelAnalytics[levelId];
+    
+    // Update stats
+    stats.attempts += 1;
+    if (successful) {
+      stats.wins += 1;
+      stats.totalXp += xp;
+      
+      // Update best time (only for successful attempts)
+      if (timeTakenMs < stats.bestTimeMs) {
+        stats.bestTimeMs = timeTakenMs;
+      }
+    } else {
+      stats.losses += 1;
+    }
+    
+    stats.totalTimeMs += timeTakenMs;
+    stats.averageTimeMs = Math.round(stats.totalTimeMs / stats.attempts);
+    
+    // Handle edge case where bestTimeMs is still Infinity (all failures)
+    if (stats.bestTimeMs === Infinity) {
+      stats.bestTimeMs = 0;
+    }
   }
 }
 
