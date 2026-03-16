@@ -73,6 +73,10 @@ function stopBackgroundMusic() {
 // --- Game Content ---
 let gameContent = null;
 
+// --- Progress Manager ---
+let gameManager = null;
+let progressInitialized = false;
+
 // Load game content from JSON file
 async function loadGameContent() {
   try {
@@ -83,9 +87,60 @@ async function loadGameContent() {
     gameContent = await response.json();
     // Enable start button once content is loaded
     startCampaignButton.disabled = false;
+    
+    // Initialize progress system after content is loaded
+    await initializeProgressSystem();
   } catch (error) {
     console.error("Error loading game content:", error);
     alert("Error loading game content. Please refresh the page.");
+  }
+}
+
+// Initialize the progress tracking system
+async function initializeProgressSystem() {
+  try {
+    console.log('[Game] Initializing progress system...');
+    
+    // Create Progress Bridge (using local storage, no API)
+    const progressBridge = new ProgressBridge({
+      useProvidedPayload: true, // We'll use local storage only
+      timeout: 5000,
+      retryAttempts: 2
+    });
+    
+    // Create Storage Manager
+    const storageManager = new StorageManager({
+      storageKey: 'brainMatchProgress',
+      useAsyncStorage: false // Web browser
+    });
+    
+    // Create Validator (3 levels in campaign)
+    const validator = new Validator({
+      minLevel: 1,
+      maxLevel: 3,
+      defaultLevel: 1
+    });
+    
+    // Create Game Manager
+    gameManager = new GameManager({
+      progressBridge,
+      storageManager,
+      validator,
+      analyticsBridge: null, // We have analytics-integration.js handling this
+      config: CONFIG
+    });
+    
+    // Initialize (loads saved progress)
+    const result = await gameManager.initialize();
+    progressInitialized = true;
+    
+    console.log(`[Game] Progress system initialized - Starting level: ${result.startLevel} (source: ${result.source})`);
+    
+    return result;
+  } catch (error) {
+    console.error('[Game] Error initializing progress system:', error);
+    progressInitialized = false;
+    return { success: false, startLevel: 1, source: 'default' };
   }
 }
 
@@ -487,6 +542,24 @@ function handleCampaignWin() {
   const stars = calculateCampaignStars(level, gameState.turns);
   totalCampaignTurns += gameState.turns;
   totalCampaignXP += xp;
+  
+  // Save progress when level is completed
+  if (progressInitialized && gameManager) {
+    gameManager.handleLevelComplete(level, {
+      xp: xp,
+      turns: gameState.turns,
+      stars: stars
+    }).then(success => {
+      if (success) {
+        console.log(`[Game] Progress saved for level ${level}`);
+      } else {
+        console.warn(`[Game] Failed to save progress for level ${level}`);
+      }
+    }).catch(err => {
+      console.error('[Game] Error saving progress:', err);
+    });
+  }
+  
   setTimeout(() => {
     // START: Added confetti
     if (typeof confetti === 'function') {
@@ -678,7 +751,15 @@ function showHowToPlay() {
   // Start game when "Got it!" is clicked
   startGameButton.onclick = () => {
     howToPlay.classList.add("hidden");
-    startGame(1);
+    
+    // Get starting level from progress manager
+    let startLevel = 1;
+    if (progressInitialized && gameManager) {
+      startLevel = gameManager.getStartLevel();
+      console.log(`[Game] Starting from saved level: ${startLevel}`);
+    }
+    
+    startGame(startLevel);
   };
 }
 
