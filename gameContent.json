@@ -1,0 +1,139 @@
+{
+  "gameMode": "textToImage",
+  "content": {
+    "science": {
+      "level1": {
+        "pairs": [
+          { 
+            "a": "square", 
+            "image": "images/11.png",
+            "imageAlt": "square shape"
+          },
+          { 
+            "a": "triangle", 
+            "image": "images/12.png",
+            "imageAlt": "triangle shape"
+          },
+          { 
+            "a": "circle", 
+            "image": "images/13.png",
+            "imageAlt": "circle shape"
+          },
+          { 
+            "a": "rectangle", 
+            "image": "images/14.png",
+            "imageAlt": "rectangle shape"
+          },
+          { 
+            "a": "star", 
+            "image": "images/15.png",
+            "imageAlt": "star shape"
+          },
+          { 
+            "a": "rhombus", 
+            "image": "images/16.png",
+            "imageAlt": "rhombus shape"
+          },
+          { 
+            "a": "pentagon",
+            "image": "images/17.png",
+            "imageAlt": "pentagon shape"
+          },
+          { 
+            "a": "hexagon", 
+            "image": "images/18.png",
+            "imageAlt": "hexagon shape"
+          }
+        ]
+      },
+      "level2": {
+        "pairs": [
+          { 
+            "a": "heptagon", 
+            "image": "images/21.png",
+            "imageAlt": "right-angled triangle"
+          },
+          { 
+            "a": "ellipse", 
+            "image": "images/22.png",
+            "imageAlt": "parallelogram"
+          },
+          { 
+            "a": "octagon", 
+            "image": "images/23.png",
+            "imageAlt": "An octagon"
+          },
+          { 
+            "a": "oval", 
+            "image": "images/24.png",
+            "imageAlt": "An oval"
+          },
+          { 
+            "a": "trapezoid", 
+            "image": "images/25.png",
+            "imageAlt": "trapezoid"
+          },
+          { 
+            "a": "kite", 
+            "image": "images/26.png",
+            "imageAlt": "kite shape"
+          },
+          { 
+            "a": "crescent", 
+            "image": "images/27.png",
+            "imageAlt": "crescent moon shape"
+          },
+          { 
+            "a": "semicircle", 
+            "image": "images/28.png",
+            "imageAlt": "semicircle"
+          }
+        ]
+      },
+      "level3": {
+        "pairs": [
+          { 
+            "a": "sphere", 
+            "image": "images/31.png",
+            "imageAlt": "sphere"
+          },
+          { 
+            "a": "cone", 
+            "image": "images/32.png",
+            "imageAlt": "cone"
+          },
+          { 
+            "a": "cube", 
+            "image": "images/33.png",
+            "imageAlt": "cube"
+          },
+          { 
+            "a": "pyramid", 
+            "image": "images/34.png",
+            "imageAlt": "pyramid"
+          },
+          { 
+            "a": "cylinder", 
+            "image": "images/35.png",
+            "imageAlt": "cylinder"
+          },
+          { 
+            "a": "Cuboid", 
+            "image": "images/36.png",
+            "imageAlt": "rectangular prism"
+          },
+          { 
+            "a": "Prism", 
+            "image": "images/37.png",
+            "imageAlt": "triangular prism"
+          },
+          { 
+            "a": "torus", 
+            "image": "images/38.png",
+            "imageAlt": "torus or donut shape"
+          }
+        ]
+      }
+    }
+  }
+}
