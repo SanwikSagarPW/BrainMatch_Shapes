@@ -126,12 +126,22 @@ async function initializeProgressSystem() {
       progressBridge,
       storageManager,
       validator,
-      analyticsBridge: null, // We have analytics-integration.js handling this
+      analyticsBridge: typeof AnalyticsManager !== 'undefined' ? AnalyticsManager.getInstance() : null,
       config: CONFIG
     });
     
-    // Initialize (loads saved progress)
-    const result = await gameManager.initialize();
+    // Read window.userInfo injected by React Native WebView and remap keys
+    const userInfo = window.userInfo;
+    const backendPayload = (userInfo && userInfo.UserID && userInfo.GameID)
+      ? {
+          userId: userInfo.UserID,
+          gameId: userInfo.GameID,
+          highestLevelPlayed: typeof userInfo.highestLevelPlayed === 'number' ? userInfo.highestLevelPlayed : 1,
+        }
+      : null;
+
+    // Initialize (loads saved progress or uses injected payload)
+    const result = await gameManager.initialize(backendPayload);
     progressInitialized = true;
     
     console.log(`[Game] Progress system initialized - Starting level: ${result.startLevel} (source: ${result.source})`);
