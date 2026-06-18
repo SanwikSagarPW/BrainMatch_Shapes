@@ -193,11 +193,8 @@ window.handleCampaignWin = function() {
     analytics.addRawMetric('xp_earned', String(xp));
     analytics.addRawMetric('time_ms', String(timeTaken));
     
-    // Submit report
-    analytics.submitReport();
-    
+    // Do NOT submit here — wait for all 3 levels to finish on the final score screen
     console.log(`[Analytics] Completed Level: ${currentLevelId}, Success: true, Time: ${timeTaken}ms, XP: ${xp}`);
-    console.log('[Analytics] Report submitted');
   } catch (error) {
     console.error('[Analytics] Error in handleCampaignWin hook:', error);
   }
@@ -225,11 +222,9 @@ window.handleReflexModeEnd = function() {
     analytics.addRawMetric('total_moves', String(turns));
     analytics.addRawMetric('time_ms', String(timeTaken));
     
-    // Submit report
+    // Reflex is standalone — submit immediately
     analytics.submitReport();
-    
-    console.log(`[Analytics] Completed Level: ${currentLevelId}, Success: true, Time: ${timeTaken}ms, Moves: ${turns}`);
-    console.log('[Analytics] Report submitted');
+    console.log(`[Analytics] Completed Reflex Mode: Success: true, Time: ${timeTaken}ms, Moves: ${turns}`);
   } catch (error) {
     console.error('[Analytics] Error in handleReflexModeEnd hook:', error);
   }
@@ -239,7 +234,36 @@ window.handleReflexModeEnd = function() {
 };
 
 // ========================================
-// 9. GRACEFUL DEGRADATION
+// 9. HOOK: FINAL SCORE SCREEN — single submit with full campaign XP
+// ========================================
+
+const originalShowFinalScoreScreen = window.showFinalScoreScreen;
+window.showFinalScoreScreen = function() {
+  try {
+    const totalXP = window.totalCampaignXP || 0;
+    const totalTurns = window.totalCampaignTurns || 0;
+
+    let finalStars = 1;
+    if (totalXP >= 150) finalStars = 3;
+    else if (totalXP >= 70) finalStars = 2;
+
+    analytics.addRawMetric('campaign_complete', 'true');
+    analytics.addRawMetric('total_campaign_xp', totalXP.toString());
+    analytics.addRawMetric('total_campaign_turns', totalTurns.toString());
+    analytics.addRawMetric('final_stars', finalStars.toString());
+
+    // Single report for the entire 3-level campaign
+    analytics.submitReport();
+    console.log(`[Analytics] Campaign complete — final report submitted. Total XP: ${totalXP}, Stars: ${finalStars}`);
+  } catch (error) {
+    console.error('[Analytics] Error in showFinalScoreScreen hook:', error);
+  }
+
+  return originalShowFinalScoreScreen.call(this);
+};
+
+// ========================================
+// 10. GRACEFUL DEGRADATION
 // ========================================
 
 // Ensure analytics never breaks the game
